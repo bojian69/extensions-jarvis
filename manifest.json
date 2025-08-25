@@ -25,6 +25,7 @@
   "web_accessible_resources": [
     {
       "resources": [
+        "config.js",
         "form-filler.js", 
         "form-configs/*.js",
         "status-window/*.html",

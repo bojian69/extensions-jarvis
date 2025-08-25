@@ -20,7 +20,7 @@ class AIApplyAssistant {
   async checkPageAndInjectButton() {
     try {
       // 检查页面是否有is_apply_wizard标记
-      const response = await fetch('YOUR_CHECK_PAGE_API_URL', {
+      const response = await fetch(API_CONFIG.BASE_URL + API_CONFIG.ENDPOINTS.CHECK_PAGE, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.token}`,
@@ -75,7 +75,7 @@ class AIApplyAssistant {
       this.statusManager.updateStatus(1, 'completed', '检测完成');
       this.statusManager.updateStatus(2, 'processing', '获取中...');
       
-      const response = await fetch('YOUR_APPLY_API_URL', {
+      const response = await fetch(API_CONFIG.BASE_URL + API_CONFIG.ENDPOINTS.APPLY, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.token}`,
@@ -131,16 +131,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// 加载状态管理器和数据收集器管理器
-const statusScript = document.createElement('script');
-statusScript.src = chrome.runtime.getURL('status-window/status-manager.js');
-statusScript.onload = () => {
-  const dataScript = document.createElement('script');
-  dataScript.src = chrome.runtime.getURL('data-collectors/data-collector-manager.js');
-  dataScript.onload = () => {
-    // 初始化
-    new AIApplyAssistant();
+// 加载配置文件
+const configScript = document.createElement('script');
+configScript.src = chrome.runtime.getURL('config.js');
+configScript.onload = () => {
+  // 加载状态管理器和数据收集器管理器
+  const statusScript = document.createElement('script');
+  statusScript.src = chrome.runtime.getURL('status-window/status-manager.js');
+  statusScript.onload = () => {
+    const dataScript = document.createElement('script');
+    dataScript.src = chrome.runtime.getURL('data-collectors/data-collector-manager.js');
+    dataScript.onload = () => {
+      // 初始化
+      new AIApplyAssistant();
+    };
+    document.head.appendChild(dataScript);
   };
-  document.head.appendChild(dataScript);
+  document.head.appendChild(statusScript);
 };
-document.head.appendChild(statusScript);
+document.head.appendChild(configScript);

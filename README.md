@@ -49,3 +49,68 @@ window.your_supplier_jobConfig = {
 - POST /api/auth/login - 用户登录
 - POST /api/page/check - 检查页面是否支持
 - POST /api/apply/submit - 提交申请获取填表信息
+
+## Chrome插件调试方法
+
+### 1. 安装和重新加载插件
+
+1. 打开 `chrome://extensions/`
+2. 开启"开发者模式"
+3. 点击"加载已解压的扩展程序"，选择 `extensions-jarvis` 文件夹
+4. 每次修改代码后，点击插件卡片上的"刷新"按钮
+
+### 2. 查看日志
+
+**日志位置：**
+- **content.js** - 在网页的开发者工具Console中查看
+- **background.js** - 在插件管理页面点击"检查视图 service worker"
+- **popup.js** - 右键插件图标选择"检查弹出内容"
+
+### 3. 测试步骤
+
+1. **测试登录功能**
+   - 点击插件图标
+   - 输入测试邮箱密码
+   - 查看Console是否有错误
+
+2. **测试页面检测**
+   - 访问任意网页
+   - 按F12打开开发者工具
+   - 查看Console中的日志信息
+
+3. **测试API调用**
+   - 在Network标签页查看API请求
+   - 检查请求头和响应数据
+
+4. **测试表单填充**
+   - 打开目标表单页面
+   - 在Console中手动测试：
+   ```javascript
+   // 测试选择器是否正确
+   document.querySelector('input[name="email"]')
+   
+   // 测试填充功能
+   const element = document.querySelector('input[name="email"]');
+   element.value = 'test@example.com';
+   ```
+
+### 4. 常见问题排查
+
+- **按钮不显示** - 检查API返回的`is_apply_wizard`字段
+- **表单不填充** - 检查CSS选择器是否正确
+- **API调用失败** - 检查网络请求和TOKEN
+- **配置文件加载失败** - 检查文件路径和权限设置
+
+### 5. 实时调试技巧
+
+在浏览器Console中直接测试：
+```javascript
+// 查看当前页面的表单元素
+document.querySelectorAll('input, select, textarea');
+
+// 测试数据收集器
+window.homes_for_students_applicationDataCollector?.extractUserInfo({email: 'test@test.com'});
+
+// 手动触发填充
+new FormFiller('homes_for_students_application', {email: 'test@test.com'}).fillForm();
+```
