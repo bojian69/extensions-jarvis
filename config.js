@@ -3,8 +3,7 @@ const API_CONFIG = {
   BASE_URL: 'http://api-service.xyz:8888',
   ENDPOINTS: {
     LOGIN: '/partner/automaApply/login',
-    CHECK_PAGE: '/partner/automaApply/checkApplyWizard',
-    APPLY: '/partner/automaApply/checkApplyItem',
+    CHECK_WIZARD: '/partner/automaApply/checkApplyWizard'
   }
 };
 

@@ -1,27 +1,21 @@
 window.homes_for_students_applicationConfig = {
   selectors: {
     email: 'input[name="email"], #email',
-    firstName: 'input[name="firstName"], #firstName',
-    lastName: 'input[name="lastName"], #lastName',
     city: 'input[name="city"], #city',
-    country: 'select[name="country"], #country',
-    phone: 'input[name="phone"], #phone'
+    country: 'select[name="country"], #country'
   },
   actions: {
     fillEmail: (element, userInfo) => element.value = userInfo.email,
-    fillFirstName: (element, userInfo) => element.value = userInfo.firstName || '',
-    fillLastName: (element, userInfo) => element.value = userInfo.lastName || '',
-    fillCity: (element, userInfo) => element.value = userInfo.city,
+    fillCity: (element, userInfo) => element.value = userInfo.city_name,
     fillCountry: (element, userInfo) => {
       if (element.tagName === 'SELECT') {
         const option = Array.from(element.options).find(opt => 
-          opt.text.includes(userInfo.country) || opt.value === userInfo.country
+          opt.text.includes(userInfo.country_name) || opt.value === userInfo.country_name
         );
         if (option) element.value = option.value;
       } else {
-        element.value = userInfo.country;
+        element.value = userInfo.country_name;
       }
-    },
-    fillPhone: (element, userInfo) => element.value = userInfo.phone || ''
+    }
   }
 };

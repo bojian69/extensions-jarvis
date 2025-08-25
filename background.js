@@ -16,5 +16,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
       });
     });
+  } else if (message.action === 'apiRequest') {
+    // 处理API请求
+    fetch(message.url, {
+      method: message.method,
+      headers: message.headers,
+      body: message.body
+    })
+    .then(response => response.json())
+    .then(data => {
+      sendResponse({ success: true, data });
+    })
+    .catch(error => {
+      sendResponse({ success: false, error: error.message });
+    });
+    
+    return true; // 保持消息通道开放
   }
 });

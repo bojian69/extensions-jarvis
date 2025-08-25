@@ -1,14 +1,15 @@
-// 页面检测和按钮注入
+// 精简版AI申请助手
 class AIApplyAssistant {
   constructor() {
     this.token = null;
-    this.statusManager = new StatusManager();
-    this.dataCollectorManager = new DataCollectorManager();
+    this.baseUrl = 'http://api-service.xyz:8888';
+    this.endpoints = {
+      CHECK_WIZARD: '/partner/automaApply/checkApplyWizard'
+    };
     this.init();
   }
   
   async init() {
-    // 获取token
     const storage = await chrome.storage.local.get(['token']);
     this.token = storage.token;
     
@@ -19,8 +20,9 @@ class AIApplyAssistant {
   
   async checkPageAndInjectButton() {
     try {
-      // 检查页面是否有is_apply_wizard标记
-      const response = await fetch(API_CONFIG.BASE_URL + API_CONFIG.ENDPOINTS.CHECK_PAGE, {
+      const response = await chrome.runtime.sendMessage({
+        action: 'apiRequest',
+        url: this.baseUrl + this.endpoints.CHECK_WIZARD,
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.token}`,
@@ -29,9 +31,11 @@ class AIApplyAssistant {
         body: JSON.stringify({ url: window.location.href })
       });
       
-      const data = await response.json();
-      if (data.is_apply_wizard) {
-        this.injectApplyButton();
+      if (response && response.data) {
+        const data = response.data.data || response.data;
+        if (data.is_apply_wizard) {
+          this.injectApplyButton();
+        }
       }
     } catch (error) {
       console.error('检查页面失败:', error);
@@ -39,7 +43,6 @@ class AIApplyAssistant {
   }
   
   injectApplyButton() {
-    // 避免重复注入
     if (document.getElementById('ai-apply-btn')) return;
     
     const button = document.createElement('button');
@@ -64,18 +67,10 @@ class AIApplyAssistant {
   }
   
   async handleApplyClick() {
-    // 打开状态窗口
-    this.statusManager.openStatusWindow();
-    
     try {
-      // 步骤1: 检测页面支持
-      this.statusManager.updateStatus(1, 'processing', '检测中...');
-      
-      // 步骤2: 获取用户信息
-      this.statusManager.updateStatus(1, 'completed', '检测完成');
-      this.statusManager.updateStatus(2, 'processing', '获取中...');
-      
-      const response = await fetch(API_CONFIG.BASE_URL + API_CONFIG.ENDPOINTS.APPLY, {
+      const response = await chrome.runtime.sendMessage({
+        action: 'apiRequest',
+        url: this.baseUrl + this.endpoints.CHECK_WIZARD,
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.token}`,
@@ -84,69 +79,88 @@ class AIApplyAssistant {
         body: JSON.stringify({ url: window.location.href })
       });
       
-      const data = await response.json();
+      if (!response || !response.success) {
+        throw new Error(`API错误: ${response?.error || '未知错误'}`);
+      }
+      
+      const data = response.data.data || response.data;
+      
       if (data.supplier_url && data.supplier_job) {
-        this.statusManager.updateStatus(2, 'completed', '获取成功');
+        const processedData = await this.processApiResponse(data.supplier_job, data);
         
-        // 使用数据收集器处理API响应
-        const processedData = await this.dataCollectorManager.processApiResponse(data.supplier_job, data);
-        
-        this.statusManager.showInfo(processedData.displayInfo);
-        
-        // 步骤3: 打开申请页面
-        this.statusManager.updateStatus(3, 'processing', '打开中...');
-        
-        // 发送消息给background script打开新页面
         chrome.runtime.sendMessage({
           action: 'openApplyPage',
           url: data.supplier_url,
           supplierJob: data.supplier_job,
-          userInfo: processedData.userInfo,
-          statusManager: true
+          userInfo: processedData.userInfo
         });
+      } else {
+        alert('获取申请信息失败');
       }
     } catch (error) {
       console.error('申请失败:', error);
-      this.statusManager.updateStatus(2, 'error', '失败');
+      alert('申请失败: ' + error.message);
     }
+  }
+  
+  async processApiResponse(supplierJob, apiResponse) {
+    try {
+      const script = document.createElement('script');
+      script.src = chrome.runtime.getURL(`data-collectors/${supplierJob}.js`);
+      
+      await new Promise((resolve, reject) => {
+        script.onload = resolve;
+        script.onerror = () => {
+          const defaultScript = document.createElement('script');
+          defaultScript.src = chrome.runtime.getURL('data-collectors/default.js');
+          defaultScript.onload = resolve;
+          defaultScript.onerror = reject;
+          document.head.appendChild(defaultScript);
+        };
+        document.head.appendChild(script);
+      });
+      
+      const collector = window[`${supplierJob}DataCollector`] || window.defaultDataCollector;
+      
+      if (collector) {
+        return {
+          userInfo: collector.extractUserInfo(apiResponse),
+          displayInfo: collector.getDisplayInfo(apiResponse)
+        };
+      }
+    } catch (error) {
+      console.error('数据收集器加载失败:', error);
+    }
+    
+    return {
+      userInfo: {
+        email: apiResponse.email,
+        city_name: apiResponse.city_name,
+        country_name: apiResponse.country_name
+      },
+      displayInfo: {
+        '邮箱': apiResponse.email,
+        '城市': apiResponse.city_name,
+        '国家': apiResponse.country_name
+      }
+    };
   }
 }
 
-// 监听来自background的消息
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'fillForm') {
-    // 动态加载FormFiller
-    if (typeof FormFiller === 'undefined') {
-      const script = document.createElement('script');
-      script.src = chrome.runtime.getURL('form-filler.js');
-      script.onload = () => {
-        const filler = new FormFiller(message.supplierJob, message.userInfo);
-        filler.fillForm();
-      };
-      document.head.appendChild(script);
-    } else {
+    const script = document.createElement('script');
+    script.src = chrome.runtime.getURL('form-filler.js');
+    script.onload = () => {
       const filler = new FormFiller(message.supplierJob, message.userInfo);
       filler.fillForm();
-    }
+    };
+    document.head.appendChild(script);
   }
 });
 
-// 加载配置文件
-const configScript = document.createElement('script');
-configScript.src = chrome.runtime.getURL('config.js');
-configScript.onload = () => {
-  // 加载状态管理器和数据收集器管理器
-  const statusScript = document.createElement('script');
-  statusScript.src = chrome.runtime.getURL('status-window/status-manager.js');
-  statusScript.onload = () => {
-    const dataScript = document.createElement('script');
-    dataScript.src = chrome.runtime.getURL('data-collectors/data-collector-manager.js');
-    dataScript.onload = () => {
-      // 初始化
-      new AIApplyAssistant();
-    };
-    document.head.appendChild(dataScript);
-  };
-  document.head.appendChild(statusScript);
-};
-document.head.appendChild(configScript);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => new AIApplyAssistant());
+} else {
+  new AIApplyAssistant();
+}

@@ -18,6 +18,10 @@ extensions-jarvis/
 ├── background.js         # 后台脚本
 ├── form-filler.js        # 表单填充中间件
 ├── config.js             # API配置
+├── form-configs/         # 表单配置文件夹
+├── data-collectors/      # 数据收集器文件夹
+├── status-window/        # 状态展示窗口
+├── logging/              # 日志系统
 └── README.md             # 说明文档
 ```
 
@@ -101,7 +105,48 @@ window.your_supplier_jobConfig = {
 - **API调用失败** - 检查网络请求和TOKEN
 - **配置文件加载失败** - 检查文件路径和权限设置
 
-### 5. 实时调试技巧
+### 5. 日志系统
+
+插件内置完整的日志记录系统，存储在Chrome本地存储中：
+
+**查看日志：**
+```javascript
+// 在网页Console中执行（需要先点击一键AI申请按钮加载日志系统）
+
+// 查看所有操作日志
+if (window.RuntimeLogger) {
+  RuntimeLogger.getLogs().then(logs => console.table(logs));
+} else {
+  console.log('日志系统未加载，请先点击一键AI申请按钮');
+}
+
+// 查看操作跟踪记录
+if (window.OperationTracker) {
+  console.table(OperationTracker.getOperations());
+}
+
+// 查看最后一次操作
+if (window.OperationTracker) {
+  console.log(OperationTracker.getLastOperation());
+}
+
+// 清除日志
+if (window.RuntimeLogger) {
+  RuntimeLogger.clearLogs();
+}
+```
+
+**重要说明：**
+- 日志系统只在点击“一键AI申请”按钮后才会加载
+- 在此之前查看日志会显示“日志系统未加载”
+- 日志信息主要在Console中查看，使用`[INIT]`、`[APPLY]`等标签
+
+**日志存储位置：**
+- Chrome本地存储键：`extensionLogs`
+- 自动保存最近50条日志记录
+- 包含时间戳、模块、消息和数据
+
+### 6. 实时调试技巧
 
 在浏览器Console中直接测试：
 ```javascript
